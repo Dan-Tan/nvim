@@ -8,9 +8,10 @@ return {
         "hrsh7th/cmp-path",
         "L3MON4D3/LuaSnip",
     },
-    config =function() 
+    config = function() 
         local cmp = require('cmp')
         local luasnip = require('luasnip')
+        local select_opts = { behavior = cmp.SelectBehavior.Select }
         cmp.setup({
             snippet = {
                 expand = function(args)
@@ -55,8 +56,8 @@ return {
                 ['<CR>'] = cmp.mapping.confirm({select = false}),
 
                 ['<C-f>'] = cmp.mapping(function(fallback)
-                    if luasnip.jumpable(1) then
-                        luasnip.jump(1)
+                    if luasnip.expand_or_jumpable() then
+                        luasnip.expand_or_jump()
                     else
                         fallback()
                     end

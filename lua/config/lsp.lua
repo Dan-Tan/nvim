@@ -1,4 +1,11 @@
-vim.lsp.enable({'pyright', 'clangd', 'lua_ls'})
+local has_cmp, cmp_nvim_lsp = pcall(require, 'cmp_nvim_lsp')
+local default_capabilities = has_cmp and cmp_nvim_lsp.default_capabilities() or vim.lsp.protocol.make_client_capabilities()
+
+vim.lsp.config('*', {
+  capabilities = default_capabilities,
+})
+
+vim.lsp.enable({'pyright', 'lua_ls'})
 
 vim.lsp.config('lua_ls', {
   on_init = function(client)
@@ -29,18 +36,7 @@ vim.lsp.config('lua_ls', {
         checkThirdParty = false,
         library = {
           vim.env.VIMRUNTIME
-          -- Depending on the usage, you might want to add additional paths
-          -- here.
-          -- '${3rd}/luv/library'
-          -- '${3rd}/busted/library'
         }
-        -- Or pull in all of 'runtimepath'.
-        -- NOTE: this is a lot slower and will cause issues when working on
-        -- your own configuration.
-        -- See https://github.com/neovim/nvim-lspconfig/issues/3189
-        -- library = {
-        --   vim.api.nvim_get_runtime_file('', true),
-        -- }
       }
     })
   end,
@@ -52,21 +48,28 @@ vim.lsp.config('lua_ls', {
 vim.api.nvim_create_autocmd('LspAttach', {
   callback = function(ev)
     local client = vim.lsp.get_client_by_id(ev.data.client_id)
-    if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_completion) then
-      vim.opt.completeopt = { 'menu', 'menuone', 'noinsert', 'fuzzy', 'popup' }
-      vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
-      vim.keymap.set('i', '<C-Space>', function()
-        vim.lsp.completion.get()
-      end)
+    local opts = { buffer = ev.buf }
+
+    -- Keybindings for LSP navigation & actions
+    vim.keymap.set('n', 'gd', vim.lsp.buf.definition, vim.tbl_extend('force', opts, { desc = 'Go to definition' }))
+    vim.keymap.set('n', 'K', vim.lsp.buf.hover, vim.tbl_extend('force', opts, { desc = 'LSP Hover documentation' }))
+    vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, vim.tbl_extend('force', opts, { desc = 'Rename symbol' }))
+    vim.keymap.set({'n', 'v'}, '<leader>ca', vim.lsp.buf.code_action, vim.tbl_extend('force', opts, { desc = 'Code action' }))
+    vim.keymap.set('n', 'gr', vim.lsp.buf.references, vim.tbl_extend('force', opts, { desc = 'List references' }))
+    vim.keymap.set('n', '<leader>gf', function() vim.lsp.buf.format({ async = true }) end, vim.tbl_extend('force', opts, { desc = 'Format document' }))
+
+    -- Inlay hints toggle (Neovim 0.10+)
+    if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint) then
+      vim.keymap.set('n', '<leader>th', function()
+        vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ bufnr = ev.buf }), { bufnr = ev.buf })
+      end, vim.tbl_extend('force', opts, { desc = 'Toggle Inlay Hints' }))
     end
   end,
 })
 
-vim.diagnostic.config(
-    { 
-        virtual_text = true,
-        virtual_lines = {
-            current_line = true
-        },
-    }
-)
+vim.diagnostic.config({
+  virtual_text = true,
+  virtual_lines = {
+    current_line = true,
+  },
+})
